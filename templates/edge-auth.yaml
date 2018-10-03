@@ -1,0 +1,49 @@
+Description: |
+    Amazon Cognito User Pool and User Pool Client deployment for Edge Authentication sample stack
+    You will be billed for the AWS resources used if you create a stack from this template. **NOTICE** Copyright 2017 Amazon.com, Inc. or its affiliates.
+    All Rights Reserved. Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
+    http://www.apache.org/licenses/LICENSE-2.0 or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and limitations under the License.
+
+Parameters:
+  ArtifactBucket:
+    Description: S3 bucket with artifact files (Lambda functions, html files, JS code, etc.)
+    Type: String
+    Default: cloudfront-blog-resources
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$
+    ConstraintDescription: ArtifactsBucket S3 bucket name can include numbers, lowercase letters, uppercase letters, periods (.) and hyphens (-). It cannot start or end with a hyphen (-).
+  ArtifactPrefix:
+    Description: Path in the S3 bucket containing artifact files
+    Type: String
+    Default: authorization-lambda-at-edge/
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: ArtifactPrefix key prefix can include numbers, lowercase letters, uppercase letters, periods (.) hyphens (-), and forward slash (/).
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/cognito-user-pool.yaml
+
+  LambdaAtEdge:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL:    !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/lambda-at-edge.yaml
+      Parameters:
+        UserPoolId:     !GetAtt CognitoUserPool.Outputs.UserPoolId
+        ArtifactBucket:   !Ref ArtifactBucket
+        ArtifactPrefix:   !Ref ArtifactPrefix
+        EdgeAuthFunctionUrl:  !Sub 'https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/edge-auth.zip'
+
+
+Outputs:
+  CognitoUserPool:
+    Description: User pool contains user credentials.  For cleanup, delete Domain Name first, then delete the user pool.
+    Value: !Sub https://console.aws.amazon.com/cognito/users/?region=${AWS::Region}#/pool/${CognitoUserPool.Outputs.UserPoolId}
+    Export: 
+      Name: il-auth-at-edge-userpool
+  LambdaAtEdgeFunction:
+    Description: Edit Lambda at Edge and publish
+    Value: !Sub 'https://console.aws.amazon.com/lambda/home?region=${AWS::Region}#/functions/${LambdaAtEdge.Outputs.EdgeAuthFunction}'
+    Export: 
+      Name: il-auth-at-edge-lambda-function
