@@ -9,8 +9,8 @@ Authorization with Lambda@Edge and JSON Web Tokens (JWTs). Modified from example
 3. Edge Lambda verifies the value from header/cookie. It should be JWT token issued from il-auth-at-edge Cognito userpool.
 4. If token is valid, Edge Lambda passes the request to Cloudfront which returns the requested content from edge cache or origin to Viewer
 5. If token is not valid, Edge Lambda will return 302 Redirect response to Viewer's browser and Viewer is taken to Cognito's login page.
-6. After successful login, Cognito redirects viewer's browser to https://<hostname from original request>/il-auth-at-edge/signin/index.html#<Cognito's id_token and access_token plus bunch of variables>*) This page reads Cognito's access token and sets it to IlAuthAtEdge cookie.
-7. Viewer is redirected to https://<hostname from original request>/ and this time Cloudfront&Lambda should let request through
+6. After successful login, Cognito redirects viewer's browser to https://&lt;hostname from original request&gt;/il-auth-at-edge/signin/index.html#&lt;Cognito's id_token and access_token plus bunch of variables&gt;*) This page reads Cognito's access token and sets it to IlAuthAtEdge cookie.
+7. Viewer is redirected to https://&lt;hostname from original request&gt;/ and this time Cloudfront&Lambda should let request through
 
 *) NOTE: Cognito's tokens are returned in fragment part of the signin redirect URL, not in query string, cookie  or headers. Therefore the page where user is redirected must read them in browser and store them in cookies. il-aut-at-edge offers a very basic signin redirect page that does precisely this. You can make your own handler fro signin redirects. ATM it must be in /il-auth-at-edge/signin/index.html path under the same hostname the pages requiring login.
 
@@ -24,22 +24,29 @@ Artifacts (lambda auth function and cloudfromation templates and signin redirect
 
 Run
 ```
-./deploy.sh -p <your aws credentials profile> -u <comma separated list of allowed signin redirect urls>
+./deploy.sh -p <your aws credentials profile> -u "https://<domain name 1>/il-auth-at-edge/signin/index.html,https://<domain name 2>/il-auth-at-edge/signin/index.html,..."
 ```
 
--u parameter should have at least one signin redirect url, ATM they look like this: https://<CNAME pointing to cloudfront distribution OR cloudfront distribution domain name if there's no CNAME>/il-auth-at-edge/signin/index.html
+-u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auht-at-edge.us-east-1.<your AWS accountId> s3 bucket that can be used as cloudfront origin.
 
+## Manual Cloudfront setup
+
+### Publish the Edge Lambda
 When the cloudformation has finished, see the outputs of the main il-auth-at-eddge stack. There's link to Lambda Function in AWS console. Go there and in Actions Dropdown select Publish New Version. Note the ARN of the version, this is needed later on.
 
-### Manual Cloudfront setup
+### Cloudfront origin for signin redirect page
 
 Add web-il-auth-at-edge.us-east-1.<your AWS accountId> as a new origin to your Cloudfront distribution. 
 
   - Check Restrict Bucket Access and select Origin Access Identity. Check Update Bucket Policy or set it up manually to allow access for the selected OAI
 
+### Cache behavior for above origin
+
 Add cache behavior for the new origin with path pattern /il-auth-at-edge/*
 
   - DON'T set any Lambda Function Associations to this behaviour!
+
+### Modify other cache behaviors to call Edge Lambda
 
 Add the Edge Lambda function association to all relevant other cache behaviors in your Cloudfront distribution
 
