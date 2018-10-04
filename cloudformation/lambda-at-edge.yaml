@@ -9,6 +9,8 @@ Parameters:
 
   UserPoolId:
     Type: String
+  UserPoolClientId:
+    Type: String
   ArtifactBucket:
     Type: String
   ArtifactPrefix:
@@ -76,6 +78,7 @@ Resources:
                   DestinationBucket = event['ResourceProperties']['DestinationBucket']
                   DestinationPrefix = event['ResourceProperties']['DestinationPrefix']
                   UserPoolId = event['ResourceProperties']['UserPoolId']
+                  UserPoolClientId = event['ResourceProperties']['UserPoolClientId']
                   AWSRegion = event['ResourceProperties']['AWSRegion']
                   SourceUrl = event['ResourceProperties']['SourceUrl']    
                   print("get jwks value")
@@ -98,6 +101,7 @@ Resources:
                   indexjs = Path(baseDir + 'index.js').read_text()
                   indexjs = indexjs.replace('##JWKS##', jwks)
                   indexjs = indexjs.replace('##USERPOOLID##', UserPoolId)
+                  indexjs = indexjs.replace('##CLIENTID##', UserPoolClientId)
                   print("save index.js back to disk")
                   with open(baseDir + 'index.js',"w") as w:
                       w.write(indexjs)
@@ -136,6 +140,7 @@ Resources:
       DestinationPrefix: !Ref ArtifactPrefix
       AWSRegion: !Ref "AWS::Region"
       UserPoolId: !Ref UserPoolId
+      UserPoolClientId: !Ref UserPoolClientId
       SourceUrl: !Ref EdgeAuthFunctionUrl
 
   EdgeAuthExecutionRole:

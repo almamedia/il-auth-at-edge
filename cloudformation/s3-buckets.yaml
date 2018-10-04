@@ -10,3 +10,9 @@ Resources:
     Properties: 
       AccessControl: BucketOwnerFullControl
       BucketName: !Sub cf-il-auth-at-edge.${AWS::Region}.${AWS::AccountId}
+      
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: BucketOwnerFullControl
+      BucketName: !Sub web-il-auth-at-edge.${AWS::Region}.${AWS::AccountId}

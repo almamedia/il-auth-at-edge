@@ -1,0 +1,48 @@
+<html>
+<head>
+  <title>IL - Authentication at Edge</title>
+</head>
+<body onload="getTokenAndRedirect()">
+  <h1>IL - Authentication at Edge return endpoint</h1>
+  <div class="main">
+      Authentication needed. If you ended up here, something went wrong. Contact your site's administration.
+  </div>
+  <hr/>
+  <script>
+  	access_token = null;
+  	// *********************************************************************
+    //     retrieve access (JWT) token from URL if it exists
+    // *********************************************************************
+    function getTokenAndRedirect() {
+      var results = new RegExp('[\?&#]access_token=([^&#]*)').exec(location.href);
+      if(results) {
+        setAuthCookie(results[1]);
+        redirect();            
+      } else {
+        return;
+      }
+    }
+    
+    function setAuthCookie(accessToken) {
+      setCookie("IlAuthAtEdge", accessToken, 1)
+    }
+
+    // *********************************************************************
+    //     redirects to website root
+    // *********************************************************************
+    function redirect() {
+      var results = new RegExp('(^https://[^/]*)').exec(location.href);
+      window.location.replace (results[1]);
+    }
+        
+    function setCookie(cname, cvalue, exhours) {
+      var d = new Date();
+      d.setTime(d.getTime() + (exhours*60*60*1000));
+      var expires = "expires="+ d.toUTCString();
+      var cookiespec = cname + "=" + cvalue + ";" + expires + ";path=/;secure;domain="+location.hostname;
+      console.log("set cookie: '" + cookiespec + "'");
+      document.cookie = cookiespec;
+    }  
+  </script>
+</body>
+</html>

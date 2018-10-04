@@ -6,6 +6,9 @@ Description: |
     See the License for the specific language governing permissions and limitations under the License.
 
 Parameters:
+  CallbackUrls:
+    Description: comma-separated list of URLs that are valid callback URLS for cognito signin and signout operations, ie. where to return user after sign in or out. You can update this list later, just put something here.
+    Type: String
   ArtifactBucket:
     Description: S3 bucket with artifact files (Lambda functions, html files, JS code, etc.)
     Type: String
@@ -24,6 +27,8 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/cognito-user-pool.yaml
+      Parameters:
+        CallbackUrls: !Ref CallbackUrls
 
   LambdaAtEdge:
     Type: AWS::CloudFormation::Stack
@@ -31,12 +36,21 @@ Resources:
       TemplateURL:    !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/lambda-at-edge.yaml
       Parameters:
         UserPoolId:     !GetAtt CognitoUserPool.Outputs.UserPoolId
+        UserPoolClientId:     !GetAtt CognitoUserPool.Outputs.UserPoolClientId
         ArtifactBucket:   !Ref ArtifactBucket
         ArtifactPrefix:   !Ref ArtifactPrefix
         EdgeAuthFunctionUrl:  !Sub 'https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/edge-auth.zip'
 
 
 Outputs:
+  CognitoUserPoolId: 
+    Value: !GetAtt CognitoUserPool.Outputs.UserPoolId
+    Export:
+      Name: il-auth-at-edge-userpool-id
+  CognitoUserPoolClientId: 
+    Value: !GetAtt CognitoUserPool.Outputs.UserPoolClientId
+    Export:
+      Name: il-auth-at-edge-userpool-client-id
   CognitoUserPool:
     Description: User pool contains user credentials.  For cleanup, delete Domain Name first, then delete the user pool.
     Value: !Sub https://console.aws.amazon.com/cognito/users/?region=${AWS::Region}#/pool/${CognitoUserPool.Outputs.UserPoolId}

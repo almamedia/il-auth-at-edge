@@ -8,6 +8,7 @@ copy values from CloudFormation outputs into USERPOOLID and JWKS variables
 */
 
 var USERPOOLID = '##USERPOOLID##';
+var CLIENTID = '##CLIENTID##';
 var JWKS = '##JWKS##';
 
 /*
@@ -33,48 +34,101 @@ for(var i = 0; i < keys.length; i++) {
     pems[key_id] = pem;
 }
 
-const response401 = {
-    status: '401',
-    statusDescription: 'Unauthorized'
-};
+function parseCookie(cookie) {
+    var parsedCookie = {}
+    cookie.split(";").map(function(field) {
+        var arr = field.split("=")
+        var result = {}
+        if(arr.length == 1) {
+            result.key = arr[0]
+        } else if(arr.length > 1) {
+            result.key = arr[0]
+            result.value = arr[1]
+        }
+        return result;
+    }).map(function(item){
+        parsedCookie[item.key] = item.value ? item.value : true;
+    });
+    return parsedCookie;
+}
 
 exports.handler = (event, context, callback) => {
     const cfrequest = event.Records[0].cf.request;
     const headers = cfrequest.headers;
+    const cookies = headers.cookie;
+
+    const response401 = {
+        status: '401',
+        statusDescription: 'Unauthorized'
+    };
+
+    const response302 = {
+        status: '302',
+        headers: {
+            location: [
+                {
+                    key: 'Location',
+                    value: 'https://' + CLIENTID + '.auth.' + region + '.amazoncognito.com/login?' + 'client_id=' + CLIENTID + '&response_type=token' + '&redirect_uri=https://' + headers.host[0].value + '/il-auth-at-edge/signin/index.html'
+                }
+            ]
+        }
+    }
+
     console.log('getting started');
     console.log('USERPOOLID=' + USERPOOLID);
+    console.log('CLIENTID=' + CLIENTID);
     console.log('region=' + region);
     console.log('pems=' + pems);
 
-    //Fail if no authorization header found
+    var jwtToken = null;
+    
+    //Fail if no authorization header or cookie found
     if(!headers.authorization) {
-        console.log("no auth header");
-        callback(null, response401);
+        console.log('no auth header, try cookie');
+        if (!headers.cookie) {
+            console.log('no auth cookie')
+            callback(null, response302);
+            return false;
+        } else {
+            for (i = 0; i < cookies.length; i++) {
+                var cookie = parseCookie(cookies[i].value);
+                if (cookie["IlAuthAtEdge"]) {
+                    jwtToken = cookie["IlAuthAtEdge"]
+                    break;
+                }
+            }
+        }
+    } else {
+        //strip out 'Bearer ' to extract JWT token only
+        var jwtToken = headers.authorization[0].value.slice(7);
+    }
+
+    if(!jwtToken) {
+        console.log('No JWT Token found');
+        callback(null, response302);
         return false;
     }
 
-    //strip out "Bearer " to extract JWT token only
-    var jwtToken = headers.authorization[0].value.slice(7);
     console.log('jwtToken=' + jwtToken);
 
     //Fail if the token is not jwt
     var decodedJwt = jwt.decode(jwtToken, {complete: true});
     if (!decodedJwt) {
-        console.log("Not a valid JWT token");
-        callback(null, response401);
+        console.log('Not a valid JWT token');
+        callback(null, response302);
         return false;
     }
 
     //Fail if token is not from your UserPool
     if (decodedJwt.payload.iss != iss) {
-        console.log("invalid issuer");
+        console.log('invalid issuer');
         callback(null, response401);
         return false;
     }
 
     //Reject the jwt if it's not an 'Access Token'
     if (decodedJwt.payload.token_use != 'access') {
-        console.log("Not an access token");
+        console.log('Not an access token');
         callback(null, response401);
         return false;
     }
