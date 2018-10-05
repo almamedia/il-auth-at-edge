@@ -75,8 +75,8 @@ Resources:
             responseData = {}
             try: 
               if (event['RequestType'] == 'Create') or (event['RequestType'] == 'Update'):
-                  DestinationBucket = event['ResourceProperties']['DestinationBucket']
-                  DestinationPrefix = event['ResourceProperties']['DestinationPrefix']
+                  ArtifactBucket = event['ResourceProperties']['ArtifactBucket']
+                  ArtifactPrefix = event['ResourceProperties']['ArtifactPrefix']
                   UserPoolId = event['ResourceProperties']['UserPoolId']
                   UserPoolClientId = event['ResourceProperties']['UserPoolClientId']
                   AWSRegion = event['ResourceProperties']['AWSRegion']
@@ -88,13 +88,13 @@ Resources:
                   jwks = jwks.replace('b\'{', '{')
                   jwks = jwks.replace('}\'', '}')
                   print("unzip source Zip to local directory")
-                  baseDir = '/tmp/' + DestinationBucket + '/' + DestinationPrefix + "/"
+                  baseDir = '/tmp/' + ArtifactBucket + '/' + ArtifactPrefix + "/"
                   localZipName = '/tmp/edge-auth.zip'
-                  remoteZipName = DestinationPrefix + '/edge-auth.zip'
+                  remoteZipName = ArtifactPrefix + '/edge-auth.zip'
                   print("SourceUrl=" + SourceUrl)
                   print("baseDir=" + baseDir)
                   s3 = boto3.resource('s3')
-                  s3.meta.client.download_file(DestinationBucket, remoteZipName, localZipName)
+                  s3.meta.client.download_file(ArtifactBucket, remoteZipName, localZipName)
                   with zipfile.ZipFile(localZipName) as zfile:
                     zfile.extractall(baseDir)
                   print("read index.js")
@@ -110,7 +110,7 @@ Resources:
                   addDirToZip(zipHandle, baseDir, baseDir)
                   zipHandle.close()
                   print("upload to S3")
-                  s3.meta.client.upload_file('/tmp/edge-auth.zip', DestinationBucket, remoteZipName, ExtraArgs={'ACL': 'public-read'} )
+                  s3.meta.client.upload_file('/tmp/edge-auth.zip', ArtifactBucket, remoteZipName, ExtraArgs={'ACL': 'public-read'} )
                   responseData['Status'] = 'SUCCESS'
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
                   print ('SUCCESS')
@@ -136,12 +136,98 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       ServiceToken: !GetAtt UpdateConfigFunction.Arn
-      DestinationBucket: !Ref ArtifactBucket
-      DestinationPrefix: !Ref ArtifactPrefix
+      ArtifactBucket: !Ref ArtifactBucket
+      ArtifactPrefix: !Ref ArtifactPrefix
       AWSRegion: !Ref "AWS::Region"
       UserPoolId: !Ref UserPoolId
       UserPoolClientId: !Ref UserPoolClientId
       SourceUrl: !Ref EdgeAuthFunctionUrl
+
+  CreateLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - lambda:CreateFunction
+            Resource: arn:aws:lambda:*:*:*
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: '*'
+
+  CreateLambdaCustomFunction: 
+    Type: AWS::Lambda::Function
+    Properties: 
+      Handler: index.handler
+      Role: !GetAtt CreateLambdaExecutionRole.Arn
+      Runtime: python3.6
+      Timeout: 60
+      MemorySize: 1536
+      Code: 
+        ZipFile: |
+          import cfnresponse
+          import os
+          import boto3
+          def handler(event, context):
+            print (str(event))
+            responseData = {}
+            try: 
+              if (event['RequestType'] == 'Create') or (event['RequestType'] == 'Update'):
+                S3Bucket = event['ResourceProperties']['Code']['S3Bucket']
+                S3Key = event['ResourceProperties']['Code']['S3Key']
+                FunctionName = event['ResourceProperties']['FunctionName']
+                Runtime = event['ResourceProperties']['Runtime']
+                Timeout = int(event['ResourceProperties']['Timeout'])
+                MemorySize = int(event['ResourceProperties']['MemorySize'])
+                Handler = event['ResourceProperties']['Handler']
+                Role = event['ResourceProperties']['Role']
+                AWSRegion = event['ResourceProperties']['AWSRegion']
+                client = boto3.client('lambda', region_name=AWSRegion)
+                response = client.create_function(
+                  Publish=True,
+                  FunctionName=FunctionName,
+                  Code={
+                    'S3Bucket':S3Bucket,
+                    'S3Key':S3Key
+                  },
+                  Timeout=Timeout,
+                  MemorySize=MemorySize,
+                  Runtime=Runtime,
+                  Role=Role,
+                  Handler=Handler,
+                )
+                responseData['Arn']=response['FunctionArn']
+                responseData['Version']=response['Version']
+                print("SUCCESS, ResponseData=" + str(responseData))
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+              else:
+                print("SUCCESS - operation not Create, ResponseData=" + str(responseData))
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+            except Exception as e:
+              responseData['Error'] = str(e)
+              cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID") 
+              print("FAILED ERROR: " + responseData['Error'])
 
   EdgeAuthExecutionRole:
     Type: AWS::IAM::Role
@@ -175,35 +261,32 @@ Resources:
             Resource: arn:aws:logs:*:*:*
 
   EdgeAuthFunction: 
-    Type: AWS::Lambda::Function
+    Type: Custom::CreateLambdaFunctionOnSpecifiedRegion
     DependsOn: UpdateConfigCustom
     DeletionPolicy: Retain
-    Properties: 
+    Properties:
+      ServiceToken: !GetAtt CreateLambdaCustomFunction.Arn
       Handler: index.handler
-      Role: !GetAtt EdgeAuthExecutionRole.Arn
       FunctionName: IlAuthAtEdgeLambda
       Runtime: nodejs8.10
       Timeout: 1
       MemorySize: 128
+      Role: !GetAtt EdgeAuthExecutionRole.Arn
       Code:
         S3Bucket: !Ref ArtifactBucket 
         S3Key: !Sub ${ArtifactPrefix}/edge-auth.zip
-
-  EdgeAuthFunctionInitialVersion: 
-    Type: AWS::Lambda::Version
-    DependsOn: EdgeAuthFunction
-    Properties: 
-      Description: Initial version
-      FunctionName: IlAuthAtEdgeLambda
+      AWSRegion: us-east-1
 
 Outputs:
   EdgeAuthFunction: 
     Description: Reference to the Lambda function
-    Value: !Ref EdgeAuthFunction
+    Value: !GetAtt EdgeAuthFunction.Arn
   EdgeAuthFunctionInitialVersion: 
     Description: Reference to the Lambda function published version
-    Value: !Ref EdgeAuthFunctionInitialVersion
-
+    Value: !Join
+      - ':'
+      - - !GetAtt EdgeAuthFunction.Arn
+        - !GetAtt EdgeAuthFunction.Version
 
 
 

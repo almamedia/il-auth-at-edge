@@ -1,14 +1,15 @@
 #!/bin/bash
 
-export AWS_REGION="us-east-1"
-
-while getopts "p:u:" OPT; do
+while getopts "p:u:r:" OPT; do
     case ${OPT} in
         p)
             export AWS_PROFILE=${OPTARG}
             ;;
         u)
             export CALLBACK_URLS=${OPTARG}
+            ;;
+        r)
+            export AWS_REGION=${OPTARG}
             ;;
         \?)
             echo "invalid option -${OPTARG}"
@@ -21,9 +22,20 @@ while getopts "p:u:" OPT; do
     esac
 done
 
-if [ -z ${CALLBACK_URLS} -o -z ${AWS_PROFILE} ]; then
-    echo "Missing parameters."
-    echo "Usage: $0 -p <aws profile> -u <comma-separated list of aouthentication callback urls>"
+if [ -z ${CALLBACK_URLS} ]; then
+    echo "Missing -u parameter."
+    echo "Usage: $0 -p <aws profile> -p <aws region> -u <comma-separated list of aouthentication callback urls>"
+    exit 1
+fi
+if [ -z ${AWS_PROFILE} ]; then
+    echo "Missing -p parameter."
+    echo "Usage: $0 -p <aws profile> -p <aws region> -u <comma-separated list of aouthentication callback urls>"
+    exit 1
+fi
+if [ -z ${AWS_REGION} ]; then
+    echo "Missing -r parameter."
+    echo "Usage: $0 -p <aws profile> -p <aws region> -u <comma-separated list of aouthentication callback urls>"
+    exit 1
 fi
 
 AWS_ACCOUNTID=$(aws sts get-caller-identity --query Account --output text)
