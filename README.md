@@ -31,9 +31,6 @@ Run
 
 ## Manual Cloudfront setup
 
-### Publish the Edge Lambda
-When the cloudformation has finished, see the outputs of the main il-auth-at-eddge stack. There's link to Lambda Function in AWS console. Go there and in Actions Dropdown select Publish New Version. Note the ARN of the version, this is needed later on.
-
 ### Cloudfront origin for signin redirect page
 
 Add web-il-auth-at-edge.us-east-1.<your AWS accountId> as a new origin to your Cloudfront distribution. 
@@ -51,8 +48,25 @@ Add cache behavior for the new origin with path pattern /il-auth-at-edge/*
 Add the Edge Lambda function association to all relevant other cache behaviors in your Cloudfront distribution
 
   - Cloudfront Event: Viewer Request
-  - Lambda function ARN: ARN for the version of Edge Lambda you published earlier
+  - Lambda function ARN: ARN for the version of Edge Lambda (see main il-auth-at-edge Cloudformation stack outputs)
+
+## Cloudfront setup with Cloudformation
+
+Above manual setup can be done in Cloudformation.
+
+The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function with name il-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
+
+```yaml
+!ImportValue il-auth-at-edge-lambda-function-version-arn
+```
+
+```json
+"Fn::ImportValue": ["il-auth-at-edge-lambda-function-version-arn"]
+```
+
+The s3-buckets Cloudformation stack exports DomainName of the website bucket with name il-auth-at-edge-website-bucket. This can be referenced in other stacks when adding the website bucket as an origin to Cloudfront distribution where authentication is needed.
 
 ## License
 
-This library is licensed under the Apache 2.0 License. 
+This library is licensed under the Apache 2.0 License.
+

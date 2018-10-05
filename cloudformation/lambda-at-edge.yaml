@@ -181,17 +181,28 @@ Resources:
     Properties: 
       Handler: index.handler
       Role: !GetAtt EdgeAuthExecutionRole.Arn
-      Runtime: nodejs6.10
+      FunctionName: IlAuthAtEdgeLambda
+      Runtime: nodejs8.10
       Timeout: 1
       MemorySize: 128
       Code:
         S3Bucket: !Ref ArtifactBucket 
         S3Key: !Sub ${ArtifactPrefix}/edge-auth.zip
 
+  EdgeAuthFunctionInitialVersion: 
+    Type: AWS::Lambda::Version
+    DependsOn: EdgeAuthFunction
+    Properties: 
+      Description: Initial version
+      FunctionName: IlAuthAtEdgeLambda
+
 Outputs:
   EdgeAuthFunction: 
     Description: Reference to the Lambda function
     Value: !Ref EdgeAuthFunction
+  EdgeAuthFunctionInitialVersion: 
+    Description: Reference to the Lambda function published version
+    Value: !Ref EdgeAuthFunctionInitialVersion
 
 
 
