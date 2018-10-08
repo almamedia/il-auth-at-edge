@@ -96,6 +96,7 @@ Resources:
                   indexjs = indexjs.replace('##JWKS##', jwks)
                   indexjs = indexjs.replace('##USERPOOLID##', UserPoolId)
                   indexjs = indexjs.replace('##CLIENTID##', UserPoolClientId)
+                  indexjs = indexjs.replace('##REGION##', AWSRegion)
                   print("save index.js back to disk")
                   with open(baseDir + 'index.js',"w") as w:
                       w.write(indexjs)

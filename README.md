@@ -16,24 +16,26 @@ Authorization with Lambda@Edge and JSON Web Tokens (JWTs). Modified from example
 
 ## Installation
 
-Istallation creates set of nested Cloudformation stacks in us-east-1 (N. Vriginia) region on account specified by --profile parameter.
+Istallation creates set of Cloudformation stacks in specified account and region plus some in us-east-1 (N. Virginia).
 
 You should have aws cli installed and profiles set up in your ~/.aws/credentials file.
 
-Artifacts (lambda auth function and cloudfromation templates and signin redirect page) are stored in s3 buckets. Buckets are created if they don't exist.
+Artifacts (lambda auth function and Cloudformation templates and signin redirect page) are stored in s3 buckets. Buckets are created if they don't exist.
 
 Run
 ```
-./deploy.sh -p <your aws credentials profile> -u "https://<domain name 1>/il-auth-at-edge/signin/index.html,https://<domain name 2>/il-auth-at-edge/signin/index.html,..."
+./deploy.sh -p &lt;your aws credentials profile&gt; -u "https://&lt;domain name 1&gt;/il-auth-at-edge/signin/index.html,https://&lt;domain name 2&gt;/il-auth-at-edge/signin/index.html" -r &lt;region&gt;"
 ```
 
--u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auht-at-edge.us-east-1.<your AWS accountId> s3 bucket that can be used as cloudfront origin.
+-u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auht-at-edge.us-east-1.&lt;your AWS accountId&gt; s3 bucket that can be used as cloudfront origin.
+
+If you want to attach the auth-at-edge mechanism to Cloudfront by Cloudformation, it is especially important to create il-auht-at-edge in same region where your Cloudfront stacks are located (it is only possible to reference stack outputs on the same region in Cloudformation)
 
 ## Manual Cloudfront setup
 
 ### Cloudfront origin for signin redirect page
 
-Add web-il-auth-at-edge.us-east-1.<your AWS accountId> as a new origin to your Cloudfront distribution. 
+Add bucket that was created in il-auth-at-edge-website-s3-bucket-&lt;region&gt; Cloudformation stack as a new origin to your Cloudfront distribution. (See stack's sole output)
 
   - Check Restrict Bucket Access and select Origin Access Identity. Check Update Bucket Policy or set it up manually to allow access for the selected OAI
 
@@ -54,17 +56,30 @@ Add the Edge Lambda function association to all relevant other cache behaviors i
 
 Above manual setup can be done in Cloudformation.
 
-The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function with name il-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
+The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function as an export namedil-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
 
+YAML
 ```yaml
 !ImportValue il-auth-at-edge-lambda-function-version-arn
 ```
 
+JSON
 ```json
-"Fn::ImportValue": ["il-auth-at-edge-lambda-function-version-arn"]
+"Fn::ImportValue": "il-auth-at-edge-lambda-function-version-arn"
 ```
 
-The s3-buckets Cloudformation stack exports DomainName of the website bucket with name il-auth-at-edge-website-bucket. This can be referenced in other stacks when adding the website bucket as an origin to Cloudfront distribution where authentication is needed.
+The il-auth-at-edge-website-s3-bucket-&lt;region&gt; Cloudformation stack exports DomainName of the website bucket
+as an export named il-auth-at-edge-website-bucket. This can be referenced in other stacks when adding the website bucket as an origin to Cloudfront distribution where authentication is needed.
+
+YAML
+```yaml
+!ImportValue il-auth-at-edge-website-bucket
+```
+
+JSON
+```json
+"Fn::ImportValue": "il-auth-at-edge-website-bucket"
+```
 
 ## License
 

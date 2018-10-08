@@ -10,15 +10,13 @@ copy values from CloudFormation outputs into USERPOOLID and JWKS variables
 var USERPOOLID = '##USERPOOLID##';
 var CLIENTID = '##CLIENTID##';
 var JWKS = '##JWKS##';
+var REGION = '##REGION##';
 
 /*
 verify values above
 */
 
-
-
-var region = 'us-east-1';
-var iss = 'https://cognito-idp.' + region + '.amazonaws.com/' + USERPOOLID;
+var iss = 'https://cognito-idp.' + REGION + '.amazonaws.com/' + USERPOOLID;
 var pems;
 
 pems = {};
@@ -68,7 +66,7 @@ exports.handler = (event, context, callback) => {
             location: [
                 {
                     key: 'Location',
-                    value: 'https://' + CLIENTID + '.auth.' + region + '.amazoncognito.com/login?' + 'client_id=' + CLIENTID + '&response_type=token' + '&redirect_uri=https://' + headers.host[0].value + '/il-auth-at-edge/signin/index.html'
+                    value: 'https://' + CLIENTID + '.auth.' + REGION + '.amazoncognito.com/login?' + 'client_id=' + CLIENTID + '&response_type=token' + '&redirect_uri=https://' + headers.host[0].value + '/il-auth-at-edge/signin/index.html'
                 }
             ]
         }
@@ -77,7 +75,7 @@ exports.handler = (event, context, callback) => {
     console.log('getting started');
     console.log('USERPOOLID=' + USERPOOLID);
     console.log('CLIENTID=' + CLIENTID);
-    console.log('region=' + region);
+    console.log('REGION=' + REGION);
     console.log('pems=' + pems);
 
     var jwtToken = null;
