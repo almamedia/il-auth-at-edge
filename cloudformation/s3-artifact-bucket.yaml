@@ -13,16 +13,3 @@ Resources:
       AccessControl: BucketOwnerFullControl
       BucketName: !Sub cf-il-auth-at-edge.${AWS::Region}.${AWS::AccountId}
       
-  WebsiteBucket:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    Properties: 
-      AccessControl: BucketOwnerFullControl
-      BucketName: !Sub web-il-auth-at-edge.${AWS::Region}.${AWS::AccountId}
-
-Outputs:
-  WebsiteBucketDomainName:
-    Description: Bucket containing signin redirect page that can be used to capture Cognito issued tokens into cookies.
-    Value: !GetAtt WebsiteBucket.DomainName
-    Export:
-      Name: il-auth-at-edge-website-bucket

@@ -10,7 +10,13 @@ Parameters:
     Description: comma-separated list of URLs that are valid callback URLS for cognito signin and signout operations, ie. where to return user after sign in or out. You can update this list later, just put something here.
     Type: String
   ArtifactBucket:
-    Description: S3 bucket with artifact files (Lambda functions, html files, JS code, etc.)
+    Description: S3 bucket with artifact files (Cloudformation templates)
+    Type: String
+    Default: cloudfront-blog-resources
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$
+    ConstraintDescription: ArtifactsBucket S3 bucket name can include numbers, lowercase letters, uppercase letters, periods (.) and hyphens (-). It cannot start or end with a hyphen (-).
+  ArtifactBucketUs:
+    Description: S3 bucket with artifact files in us-east-1 (Lambda functions)
     Type: String
     Default: cloudfront-blog-resources
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$
@@ -37,10 +43,8 @@ Resources:
       Parameters:
         UserPoolId:     !GetAtt CognitoUserPool.Outputs.UserPoolId
         UserPoolClientId:     !GetAtt CognitoUserPool.Outputs.UserPoolClientId
-        ArtifactBucket:   !Ref ArtifactBucket
+        ArtifactBucket:   !Ref ArtifactBucketUs
         ArtifactPrefix:   !Ref ArtifactPrefix
-        EdgeAuthFunctionUrl:  !Sub 'https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/edge-auth.zip'
-
 
 Outputs:
   CognitoUserPoolId: 
@@ -58,11 +62,11 @@ Outputs:
       Name: il-auth-at-edge-userpool
   LambdaAtEdgeFunction:
     Description: Edit Lambda at Edge and publish
-    Value: !Sub 'https://console.aws.amazon.com/lambda/home?region=${AWS::Region}#/functions/${LambdaAtEdge.Outputs.EdgeAuthFunction}'
+    Value: !Sub 'https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/${LambdaAtEdge.Outputs.EdgeAuthFunction}'
     Export: 
       Name: il-auth-at-edge-lambda-function
   LambdaAtEdgeFunctionVersionARN:
-    Description: Edit Lambda at Edge and publish
+    Description: Arn for the published version of edge auth function
     Value: !GetAtt LambdaAtEdge.Outputs.EdgeAuthFunctionInitialVersion
     Export: 
       Name: il-auth-at-edge-lambda-function-version-arn

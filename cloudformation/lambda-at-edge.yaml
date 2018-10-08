@@ -15,12 +15,8 @@ Parameters:
     Type: String
   ArtifactPrefix:
     Type: String
-  EdgeAuthFunctionUrl:
-    Type: String
-
 
 Resources:
-
   UpdateConfigExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -80,7 +76,6 @@ Resources:
                   UserPoolId = event['ResourceProperties']['UserPoolId']
                   UserPoolClientId = event['ResourceProperties']['UserPoolClientId']
                   AWSRegion = event['ResourceProperties']['AWSRegion']
-                  SourceUrl = event['ResourceProperties']['SourceUrl']    
                   print("get jwks value")
                   jwksUrl = 'https://cognito-idp.' + AWSRegion + '.amazonaws.com/' + UserPoolId + '/.well-known/jwks.json'
                   with urlopen(jwksUrl) as httpresponse:
@@ -91,7 +86,6 @@ Resources:
                   baseDir = '/tmp/' + ArtifactBucket + '/' + ArtifactPrefix + "/"
                   localZipName = '/tmp/edge-auth.zip'
                   remoteZipName = ArtifactPrefix + '/edge-auth.zip'
-                  print("SourceUrl=" + SourceUrl)
                   print("baseDir=" + baseDir)
                   s3 = boto3.resource('s3')
                   s3.meta.client.download_file(ArtifactBucket, remoteZipName, localZipName)
@@ -141,7 +135,6 @@ Resources:
       AWSRegion: !Ref "AWS::Region"
       UserPoolId: !Ref UserPoolId
       UserPoolClientId: !Ref UserPoolClientId
-      SourceUrl: !Ref EdgeAuthFunctionUrl
 
   CreateLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -267,7 +260,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CreateLambdaCustomFunction.Arn
       Handler: index.handler
-      FunctionName: IlAuthAtEdgeLambda
+      FunctionName: !Sub IlAuthAtEdgeLambda-${AWS::StackName}
       Runtime: nodejs8.10
       Timeout: 1
       MemorySize: 128
