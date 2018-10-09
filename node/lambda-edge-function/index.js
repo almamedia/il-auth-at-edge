@@ -32,16 +32,16 @@ for(var i = 0; i < keys.length; i++) {
     pems[key_id] = pem;
 }
 
-function parseCookie(cookie) {
+function parseCookieHeader(cookie) {
     var parsedCookie = {}
     cookie.split(";").map(function(field) {
         var arr = field.split("=")
         var result = {}
         if(arr.length == 1) {
-            result.key = arr[0]
+            result.key = arr[0].trim()
         } else if(arr.length > 1) {
-            result.key = arr[0]
-            result.value = arr[1]
+            result.key = arr[0].trim()
+            result.value = arr[1].trim()
         }
         return result;
     }).map(function(item){
@@ -53,7 +53,7 @@ function parseCookie(cookie) {
 exports.handler = (event, context, callback) => {
     const cfrequest = event.Records[0].cf.request;
     const headers = cfrequest.headers;
-    const cookies = headers.cookie;
+    const cookieHeaders = headers.cookie;
 
     const response401 = {
         status: '401',
@@ -88,9 +88,9 @@ exports.handler = (event, context, callback) => {
             callback(null, response302);
             return false;
         } else {
-            for (i = 0; i < cookies.length; i++) {
-                var cookie = parseCookie(cookies[i].value);
-                if (cookie["IlAuthAtEdge"]) {
+            for (i = 0; i < cookieHeaders.length; i++) {
+                var parsedCookies = parseCookieHeader(cookieHeaders[i].value);
+                if (parsedCookies["IlAuthAtEdge"]) {
                     jwtToken = cookie["IlAuthAtEdge"]
                     break;
                 }

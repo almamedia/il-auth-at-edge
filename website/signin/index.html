@@ -39,7 +39,7 @@
       var d = new Date();
       d.setTime(d.getTime() + (exhours*60*60*1000));
       var expires = "expires="+ d.toUTCString();
-      var cookiespec = cname + "=" + cvalue + ";" + expires + ";path=/;secure;domain="+location.hostname;
+      var cookiespec = cname + "=" + cvalue + ";" + expires + ";path=/;secure;";
       console.log("set cookie: '" + cookiespec + "'");
       document.cookie = cookiespec;
     }  

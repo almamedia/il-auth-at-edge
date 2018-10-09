@@ -81,6 +81,13 @@ JSON
 "Fn::ImportValue": "il-auth-at-edge-website-bucket"
 ```
 
+## Todo
+
+- Provide a Lambda for token catching so that auth can be atached on ALB too and redirect URL can be more flexibly configured
+- Provide script for adding allowed redirect urls to Cognito user pool
+- Use some cookie parsing library instead of ugly .split().trim() in lambda functions
+- Make custom resources in CF stacks updatable if possible
+
 ## License
 
 This library is licensed under the Apache 2.0 License.
