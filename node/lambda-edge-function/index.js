@@ -57,16 +57,30 @@ exports.handler = (event, context, callback) => {
 
     const response401 = {
         status: '401',
-        statusDescription: 'Unauthorized'
+        statusDescription: 'Unauthorized',
+        headers: {
+            'cache-control': [
+                {
+                    key: 'Cache-Control',
+                    value: 'no-store' 
+                }
+            ]
+        }
     };
 
     const response302 = {
         status: '302',
         headers: {
-            location: [
+            'location': [
                 {
                     key: 'Location',
                     value: 'https://' + CLIENTID + '.auth.' + REGION + '.amazoncognito.com/login?' + 'client_id=' + CLIENTID + '&response_type=token' + '&redirect_uri=https://' + headers.host[0].value + '/il-auth-at-edge/signin/index.html'
+                }
+            ],
+            'cache-control': [
+                {
+                    key: 'Cache-Control',
+                    value: 'no-store' 
                 }
             ]
         }
