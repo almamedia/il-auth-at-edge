@@ -97,8 +97,8 @@ exports.handler = (event, context, callback) => {
     //Fail if no authorization header or cookie found
     if(!headers.authorization) {
         console.log('no auth header, try cookie');
-        if (!headers.cookie) {
-            console.log('no auth cookie')
+        if (!cookieHeaders) {
+            console.log('no cookies')
             callback(null, response302);
             return false;
         } else {
