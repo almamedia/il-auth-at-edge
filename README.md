@@ -87,6 +87,7 @@ JSON
 - Provide script for adding allowed redirect urls to Cognito user pool
 - Use some cookie parsing library instead of ugly .split().trim() in lambda functions
 - Make custom resources in CF stacks updatable if possible
+- Explore cahanges needed to make auth work as OriginRequest event handler to reduce overhead and invocation costs caused by running it on ViewerRequest events.
 
 ## License
 
