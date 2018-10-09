@@ -24,12 +24,12 @@ Artifacts (lambda auth function and Cloudformation templates and signin redirect
 
 Run
 ```
-./deploy.sh -p &lt;your aws credentials profile&gt; -u "https://&lt;domain name 1&gt;/il-auth-at-edge/signin/index.html,https://&lt;domain name 2&gt;/il-auth-at-edge/signin/index.html" -r &lt;region&gt;"
+./deploy.sh -p <your aws credentials profile> -u "https://<domain name 1>/il-auth-at-edge/signin/index.html,https://<domain name 2>/il-auth-at-edge/signin/index.html" -r <AWS region>"
 ```
 
--u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auht-at-edge.us-east-1.&lt;your AWS accountId&gt; s3 bucket that can be used as cloudfront origin.
+-u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auth-at-edge.&lt;region&gt;.&lt;your AWS accountId&gt; s3 bucket that can be used as cloudfront origin.
 
-If you want to attach the auth-at-edge mechanism to Cloudfront by Cloudformation, it is especially important to create il-auht-at-edge in same region where your Cloudfront stacks are located (it is only possible to reference stack outputs on the same region in Cloudformation)
+If you want to attach the auth-at-edge mechanism to Cloudfront by Cloudformation, it is especially important to create il-auth-at-edge in same region where your Cloudfront stacks are located (it is only possible to reference stack outputs on the same region in Cloudformation)
 
 ## Manual Cloudfront setup
 
@@ -55,6 +55,10 @@ Add the Edge Lambda function association to all relevant other cache behaviors i
 ## Cloudfront setup with Cloudformation
 
 Above manual setup can be done in Cloudformation.
+
+Create (if you don't have already) Cloudfront OriginAccessIdentity, and give it access to il-auth-at-edge website bucket (See stack outputs) via new bucket policy.
+
+This very same OAI can then be referenced from CLoudfront cache behavior that routes requests to il-auht-at-edge website bucket.
 
 The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function as an export namedil-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
 
