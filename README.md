@@ -12,7 +12,7 @@ Authorization with Lambda@Edge and JSON Web Tokens (JWTs). Modified from example
 6. After successful login, Cognito redirects viewer's browser to https://&lt;hostname from original request&gt;/il-auth-at-edge/signin/index.html#&lt;Cognito's id_token and access_token plus bunch of variables&gt;*) This page reads Cognito's access token and sets it to IlAuthAtEdge cookie.
 7. Viewer is redirected to https://&lt;hostname from original request&gt;/ and this time Cloudfront&Lambda should let request through
 
-*) NOTE: Cognito's tokens are returned in fragment part of the signin redirect URL, not in query string, cookie  or headers. Therefore the page where user is redirected must read them in browser and store them in cookies. il-aut-at-edge offers a very basic signin redirect page that does precisely this. You can make your own handler fro signin redirects. ATM it must be in /il-auth-at-edge/signin/index.html path under the same hostname the pages requiring login.
+*) NOTE: Cognito's tokens are returned in fragment part of the signin redirect URL, not in query string, cookie  or headers. Therefore the page where user is redirected must read them in browser and store them in cookies. il-aut-at-edge offers a very basic signin redirect page that does precisely this. You can make your own handler for signin redirects. ATM it must be in /il-auth-at-edge/signin/index.html path under the same hostname that requires login.
 
 ## Installation
 
@@ -24,12 +24,12 @@ Artifacts (lambda auth function and Cloudformation templates and signin redirect
 
 Run
 ```
-./deploy.sh -p &lt;your aws credentials profile&gt; -u "https://&lt;domain name 1&gt;/il-auth-at-edge/signin/index.html,https://&lt;domain name 2&gt;/il-auth-at-edge/signin/index.html" -r &lt;region&gt;"
+./deploy.sh -p <your aws credentials profile> -u "https://<domain name 1>/il-auth-at-edge/signin/index.html,https://<domain name 2>/il-auth-at-edge/signin/index.html" -r <AWS region>"
 ```
 
--u parameter should have at least one signin redirect url and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a very basic implementation for that page and it is synced to web-il-auht-at-edge.us-east-1.&lt;your AWS accountId&gt; s3 bucket that can be used as cloudfront origin.
+-u parameter should have at least one signin redirect url (address where viewer is returned from Cognito) and it's path is fixed ATM to /il-auth-at-edge/signin/index.html. This repository contains a VERY basic implementation for that page which is synced to web-il-auth-at-edge.&lt;region&gt;.&lt;your AWS accountId&gt; s3 bucket that can be used as cloudfront origin.
 
-If you want to attach the auth-at-edge mechanism to Cloudfront by Cloudformation, it is especially important to create il-auht-at-edge in same region where your Cloudfront stacks are located (it is only possible to reference stack outputs on the same region in Cloudformation)
+If you want to attach the auth-at-edge mechanism to Cloudfront by Cloudformation, it is especially important to create il-auth-at-edge in same region where your Cloudfront stacks are located (it is only possible to reference stack outputs on the same region in Cloudformation)
 
 ## Manual Cloudfront setup
 
@@ -56,7 +56,11 @@ Add the Edge Lambda function association to all relevant other cache behaviors i
 
 Above manual setup can be done in Cloudformation.
 
-The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function as an export namedil-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
+Create (if you don't have already) Cloudfront OriginAccessIdentity, and give it access to il-auth-at-edge website bucket (See stack outputs) via new bucket policy.
+
+This very same OAI can then be referenced from CLoudfront cache behavior that routes requests to il-auht-at-edge website bucket.
+
+The main il-auth-at-edge Cloudformation stack exports ARN for the published version of the auth Lambda@Edge function as an export named il-auth-at-edge-lambda-function-version-arn. This can be referenced in other stacks when adding the lambda function association to Cloudfront distributions cachebehaviors.
 
 YAML
 ```yaml
@@ -83,10 +87,10 @@ JSON
 
 ## Todo
 
-- Provide a Lambda for token catching so that auth can be atached on ALB too and redirect URL can be more flexibly configured
-- Provide script for adding allowed redirect urls to Cognito user pool
+- Provide a Lambda that returns the token catching html page so that auth can be atached on ALB too and redirect URL can be more flexibly configured. Token catching page should show a spinner or be otherwise little prettier :)
+- Provide script for adding allowed redirect urls to Cognito user pool AND/OR make it possible to update the list of allowed redirects via Cloudformation (see next bullet point)
+- Make custom resources in CF stacks (cognito stuff, auth lambda) updatable. ATM new resources are created if stack is updated
 - Use some cookie parsing library instead of ugly .split().trim() in lambda functions
-- Make custom resources in CF stacks updatable if possible
 - Explore cahanges needed to make auth work as OriginRequest event handler to reduce overhead and invocation costs caused by running it on ViewerRequest events.
 
 ## License
