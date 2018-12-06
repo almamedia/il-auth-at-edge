@@ -50,18 +50,44 @@ Resources:
         ZipFile: |
           import boto3
           import cfnresponse
+          import base64
           def handler(event, context):
               responseData = {}
+              client = boto3.client('cognito-idp')
               print (str(event)) 
+              PoolName ='il-auth-at-edge-userpool'
+              ClientName='il-auth-at-edge-userpool-client'
+              UserPoolId = ''
+              ClientId = ''
+              try:
+                  UserPoolId = base64.b64decode(event['PhysicalResourceId']).split(':')[0]
+                  ClientId = base64.b64decode(event['PhysicalResourceId']).split(':')[1]
+              except:
+                  # Try to find user pool and client that were created previously and 
+                  # not coded to resourceid. This is needed when updating stack
+                  pools = client.list_user_pools()
+                  for pool in pools['UserPools']:
+                      if pool['Name'] == PoolName:
+                          UserPoolId = pool['Id']
+                          break
+                  clients = client.list_user_pool_clients()
+                  for userpoolclient in clients['UserPoolClients']:
+                      if userpoolclients['ClientName'] == ClientName:
+                          ClientId = userpoolclient['ClientId']
+                          break
+              if UserPoolId != '':
+                event['RequestType'] = 'Update'
+                customResourcePhysicalId = base64.b64encode(UserPoolId + ":" + ClientId)
+                event['PhysicalResourceId'] = customResourcePhysicalId
+
               try: 
                   if event['RequestType'] == 'Create':
-                      client = boto3.client('cognito-idp') 
                       response = client.create_user_pool(
                           AdminCreateUserConfig={
                               'AllowAdminCreateUserOnly': True,
                               'UnusedAccountValidityDays': 7
                           },
-                          PoolName='il-auth-at-edge-userpool',
+                          PoolName=PoolName,
                           AutoVerifiedAttributes=['email'],
                           Schema=[
                               {
@@ -73,7 +99,7 @@ Resources:
                       CreatedUserPoolId = response['UserPool']['Id']
                       response = client.create_user_pool_client(
                           UserPoolId=CreatedUserPoolId,
-                          ClientName='il-auth-at-edge-userpool-client',
+                          ClientName=ClientName,
                           ReadAttributes=[
                               'address', 'birthdate', 'email', 'email_verified', 'family_name', 'gender', 'given_name', 'locale', 'middle_name', 'name', 'nickname', 'phone_number', 'phone_number_verified', 'picture', 'preferred_username', 'profile', 'updated_at', 'website', 'zoneinfo'
                           ],
@@ -94,14 +120,15 @@ Resources:
                       )
                       responseData['UserPoolId'] = CreatedUserPoolId
                       responseData['ClientId'] = CreatedClientId
-                      print("SUCCESS, ResponseData=" + str(responseData))
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-                  else:
-                      print("SUCCESS - operation not Create, ResponseData=" + str(responseData))
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+                      customResourcePhysicalId = base64.b64encode(CreatedUserPoolId + ":" + CreatedClientId)
+                      print("Create SUCCESS, ResponseData=" + str(responseData))
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, customResourcePhysicalId)
+                  else if event['RequestType'] == 'Update':
+                      print("Update SUCCESS - responseData=" + str(responseData))
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, event['PhysicalResourceId'])
               except Exception as e:
                   responseData['Error'] = str(e)
-                  cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID") 
+                  cfnresponse.send(event, context, cfnresponse.FAILED, responseData, event['PhysicalResourceId']) 
                   print("FAILED ERROR: " + responseData['Error'])
 
   CreateUserPoolAndClient:
