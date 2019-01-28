@@ -35,6 +35,8 @@ Resources:
       TemplateURL: !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/cognito-user-pool.yaml
       Parameters:
         CallbackUrls: !Ref CallbackUrls
+        ArtifactBucket:   !Ref ArtifactBucket
+        ArtifactPrefix:   !Ref ArtifactPrefix
 
   LambdaAtEdge:
     Type: AWS::CloudFormation::Stack

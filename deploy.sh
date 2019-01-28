@@ -68,12 +68,16 @@ if ! aws s3 ls | grep -q "${WEBSITE_BUCKET}"; then
         --no-fail-on-empty-changeset || exit 1
 fi
 
-echo "Create zipfile containing lambda stuff"
 rm -rf /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/
 mkdir -p /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/
 rm -rf /tmp/${ARTIFACT_BUCKET_US}/${ITEM_KEY_PREFIX}/
 mkdir -p /tmp/${ARTIFACT_BUCKET_US}/${ITEM_KEY_PREFIX}/
-(cd node/lambda-edge-function; zip -r /tmp/${ARTIFACT_BUCKET_US}/${ITEM_KEY_PREFIX}/edge-auth.zip ./*)
+echo "Create zipfile containing edge lambda stuff"
+(cd lambda/lambda-edge-function; zip -r /tmp/${ARTIFACT_BUCKET_US}/${ITEM_KEY_PREFIX}/edge-auth.zip ./*)
+echo "Create zipfile containing userpool lambda stuff"
+(cd lambda/userpool-function; pip3 install cfnresponse --system --target .; zip -r /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/userpool.zip ./*)
+echo "Create zipfile containing lambda creation lambda stuff"
+(cd lambda/create-lambda-function; pip3 install cfnresponse --system --target .; zip -r /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/createlambda.zip ./*)
 echo "Copy subtemplates to /tmp"
 cp cloudformation/cognito-user-pool.yaml /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/
 cp cloudformation/lambda-at-edge.yaml /tmp/${ARTIFACT_BUCKET}/${ITEM_KEY_PREFIX}/
