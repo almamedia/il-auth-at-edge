@@ -13,6 +13,8 @@ Parameters:
     Type: String
   ArtifactBucket:
     Type: String
+  ArtifactBucketUS:
+    Type: String
   ArtifactPrefix:
     Type: String
 
@@ -45,8 +47,8 @@ Resources:
             Action:
             - s3:*
             Resource: 
-            - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
-            - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}/*'
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}'
 
   UpdateConfigFunction: 
     Type: AWS::Lambda::Function
@@ -131,7 +133,7 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       ServiceToken: !GetAtt UpdateConfigFunction.Arn
-      ArtifactBucket: !Ref ArtifactBucket
+      ArtifactBucket: !Ref ArtifactBucketUS
       ArtifactPrefix: !Ref ArtifactPrefix
       AWSRegion: !Ref "AWS::Region"
       UserPoolId: !Ref UserPoolId
@@ -163,7 +165,7 @@ Resources:
             Resource: arn:aws:logs:*:*:*
           - Effect: Allow
             Action:
-              - lambda:CreateFunction
+              - lambda:*
             Resource: arn:aws:lambda:*:*:*
           - Effect: Allow
             Action:
@@ -226,7 +228,7 @@ Resources:
       MemorySize: 128
       Role: !GetAtt EdgeAuthExecutionRole.Arn
       Code:
-        S3Bucket: !Ref ArtifactBucket 
+        S3Bucket: !Ref ArtifactBucketUS
         S3Key: !Sub ${ArtifactPrefix}/edge-auth.zip
       AWSRegion: us-east-1
 

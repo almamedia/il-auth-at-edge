@@ -45,7 +45,8 @@ Resources:
       Parameters:
         UserPoolId:     !GetAtt CognitoUserPool.Outputs.UserPoolId
         UserPoolClientId:     !GetAtt CognitoUserPool.Outputs.UserPoolClientId
-        ArtifactBucket:   !Ref ArtifactBucketUs
+        ArtifactBucketUS:   !Ref ArtifactBucketUs
+        ArtifactBucket:   !Ref ArtifactBucket
         ArtifactPrefix:   !Ref ArtifactPrefix
 
 Outputs:

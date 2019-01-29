@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"jsonwebtoken": "^8.3.0",
+		"jwk-to-pem": "^2.0.0"
+	}
+}
