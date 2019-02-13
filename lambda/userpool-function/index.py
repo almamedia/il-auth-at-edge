@@ -107,6 +107,8 @@ def handler(event, context):
                 AllowedOAuthScopes=['aws.cognito.signin.user.admin','openid'],
                 AllowedOAuthFlowsUserPoolClient=True
             )
+            responseData['UserPoolId'] = UserPoolId
+            responseData['ClientId'] = ClientId
             print("Update SUCCESS - responseData=" + str(responseData))
             cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, event['PhysicalResourceId'])
         elif event['RequestType'] == 'Delete':

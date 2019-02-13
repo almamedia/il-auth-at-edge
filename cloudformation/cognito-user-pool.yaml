@@ -20,6 +20,9 @@ Parameters:
   CallbackUrls:
     Description: comma-separated list of URLs that are valid callback URLS for cognito signin and signout operations, ie. where to return user after sign in or out. You can update this list later, just put something here.
     Type: String
+  LambdaZipRevisionSuffix:
+    Description: Suffix added to lambda function code zipfile name to ensure code change is registered
+    Type: String
 Resources:
 
   LambdaExecutionRole:
@@ -52,6 +55,9 @@ Resources:
                 - cognito-idp:CreateUserPool
                 - cognito-idp:CreateUserPoolClient
                 - cognito-idp:CreateUserPoolDomain
+                - cognito-idp:UpdateUserPool
+                - cognito-idp:UpdateUserPoolClient
+                - cognito-idp:UpdateUserPoolDomain
                 - cognito-idp:DeleteUserPool
                 - cognito-idp:DeleteUserPoolClient
                 - cognito-idp:DeleteUserPoolDomain
@@ -67,7 +73,7 @@ Resources:
       Timeout: 60
       Code: 
         S3Bucket: !Ref ArtifactBucket
-        S3Key: !Sub ${ArtifactPrefix}/userpool.zip
+        S3Key: !Sub ${ArtifactPrefix}/userpool-${LambdaZipRevisionSuffix}.zip
 
   UserPoolAndClient:
     Type: Custom::CreateUserPoolAndClient
