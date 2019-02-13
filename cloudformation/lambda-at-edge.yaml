@@ -56,6 +56,7 @@ Resources:
   UpdateConfigFunction: 
     Type: AWS::Lambda::Function
     Properties: 
+      FunctionName: il-auth-at-edge-UpdateConfig
       Handler: index.handler
       Role: !GetAtt UpdateConfigExecutionRole.Arn
       Runtime: python3.6
@@ -65,8 +66,8 @@ Resources:
         S3Bucket: !Ref ArtifactBucket
         S3Key: !Sub ${ArtifactPrefix}/updateconfig-${LambdaZipRevisionSuffix}.zip
 
-  UpdateConfigCustom:
-    Type: Custom::UpdateConfigCustom
+  UpdateConfig:
+    Type: Custom::UpdateConfig
     DeletionPolicy: Retain
     Properties:
       ServiceToken: !GetAtt UpdateConfigFunction.Arn
@@ -118,9 +119,10 @@ Resources:
             - !Sub 'arn:aws:s3:::${ArtifactBucketUS}/*'
             - !Sub 'arn:aws:s3:::${ArtifactBucketUS}'
 
-  CreateLambdaCustomFunction: 
+  CreateLambdaFunction: 
     Type: AWS::Lambda::Function
     Properties: 
+      FunctionName: il-auth-at-edge-CreateLambda
       Handler: index.handler
       Role: !GetAtt CreateLambdaExecutionRole.Arn
       Runtime: python3.6
@@ -161,14 +163,14 @@ Resources:
             - logs:PutLogEvents
             Resource: arn:aws:logs:*:*:*
 
-  EdgeAuthFunction: 
+  EdgeAuth: 
     Type: Custom::CreateLambdaFunctionOnSpecifiedRegion
-    DependsOn: UpdateConfigCustom
+    DependsOn: UpdateConfig
     DeletionPolicy: Retain
     Properties:
-      ServiceToken: !GetAtt CreateLambdaCustomFunction.Arn
+      ServiceToken: !GetAtt CreateLambdaFunction.Arn
       Handler: index.handler
-      FunctionName: !Sub IlAuthAtEdgeLambda-${AWS::StackName}
+      FunctionName: !Sub il-auth-at-edge-EdgeAuth
       Runtime: nodejs8.10
       Timeout: 1
       MemorySize: 128
