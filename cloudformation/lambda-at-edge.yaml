@@ -104,7 +104,9 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:*
-            Resource: arn:aws:lambda:*:*:*
+            Resource: 
+              - arn:aws:lambda:*:*:*
+              - arn:aws:lambda:*:*
           - Effect: Allow
             Action:
               - iam:PassRole
