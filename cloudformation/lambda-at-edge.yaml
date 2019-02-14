@@ -183,13 +183,13 @@ Resources:
 Outputs:
   EdgeAuthFunction: 
     Description: Reference to the Lambda function
-    Value: !GetAtt EdgeAuthFunction.Arn
+    Value: !GetAtt EdgeAuth.Arn
   EdgeAuthFunctionInitialVersion: 
     Description: Reference to the Lambda function published version
     Value: !Join
       - ':'
-      - - !GetAtt EdgeAuthFunction.Arn
-        - !GetAtt EdgeAuthFunction.Version
+      - - !GetAtt EdgeAuth.Arn
+        - !GetAtt EdgeAuth.Version
 
 
 
