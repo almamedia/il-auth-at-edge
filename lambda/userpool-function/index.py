@@ -1,7 +1,12 @@
 import boto3
 import cfnresponse
 import base64
+import os
+
 def handler(event, context):
+    configPath = os.environ['LAMBDA_TASK_ROOT'] + '/config.json'
+    configContents = open(configPath).read()
+    configJson = json.loads(configContents)
     responseData = {}
     cognitoIDPClient = boto3.client('cognito-idp')
     print (str(event)) 
@@ -47,12 +52,12 @@ def handler(event, context):
         if event['RequestType'] == 'Create':
             print("Create")
             response = cognitoIDPClient.create_user_pool(
-                AdminCreateUserConfig={
-                    'AllowAdminCreateUserOnly': True,
-                    'UnusedAccountValidityDays': 7
-                },
                 PoolName=PoolName,
+                AdminCreateUserConfig=configContents['AdminCreateUserConfig'],
                 AutoVerifiedAttributes=['email'],
+                SmsVerificationMessage=configContents['SmsVerificationMessage'],
+                EmailVerificationMessage=configContents['EmailVerificationMessage'],
+                EmailVerificationSubject=configContents['EmailVerificationMessage'],
                 Schema=[
                     {
                         'Name': 'email',
@@ -92,6 +97,10 @@ def handler(event, context):
             print("Update")
             cognitoIDPClient.update_user_pool_client(
                 UserPoolId=UserPoolId,
+                AdminCreateUserConfig=configContents['AdminCreateUserConfig'],
+                SmsVerificationMessage=configContents['SmsVerificationMessage'],
+                EmailVerificationMessage=configContents['EmailVerificationMessage'],
+                EmailVerificationSubject=configContents['EmailVerificationMessage'],
                 ClientId=ClientId,
                 ClientName=ClientName,
                 ReadAttributes=[
