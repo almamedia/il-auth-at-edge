@@ -106,8 +106,7 @@ Resources:
             Action:
               - lambda:*
             Resource: 
-              - arn:aws:lambda:*:*:*
-              - arn:aws:lambda:*:*
+              - !Sub arn:aws:lambda:us-east-1:${AWS::AccountId}:*
           - Effect: Allow
             Action:
               - iam:PassRole
@@ -161,7 +160,7 @@ Resources:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:*
+            Resource: !Sub arn:aws:logs:us-east-1:${AWS::AccountId}:*
 
   EdgeAuth: 
     Type: Custom::CreateLambdaFunctionOnSpecifiedRegion

@@ -12,4 +12,7 @@ Resources:
     Properties: 
       AccessControl: BucketOwnerFullControl
       BucketName: !Sub cf-il-auth-at-edge.${AWS::Region}.${AWS::AccountId}
-      
+      BucketEncryption : 
+          ServerSideEncryptionConfiguration: 
+            - ServerSideEncryptionByDefault: 
+                SSEAlgorithm: AES256      
