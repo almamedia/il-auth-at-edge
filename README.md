@@ -89,11 +89,7 @@ JSON
 
 ## Todo
 
-- Provide a Lambda that returns the token catching html page so that auth can be atached on ALB too and redirect URL can be more flexibly configured. Token catching page should show a spinner or be otherwise little prettier :)
-- Provide script for adding allowed redirect urls to Cognito user pool AND/OR make it possible to update the list of allowed redirects via Cloudformation (see next bullet point)
-- Make custom resources in CF stacks (cognito stuff, auth lambda) updatable. ATM new resources are created if stack is updated
-- Use some cookie parsing library instead of ugly .split().trim() in lambda functions
-- Explore cahanges needed to make auth work as OriginRequest event handler to reduce overhead and invocation costs caused by running it on ViewerRequest events.
+See Issues
 
 ## License
 
