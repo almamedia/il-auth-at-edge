@@ -27,7 +27,9 @@ Parameters:
     Default: authorization-lambda-at-edge/
     AllowedPattern: ^[0-9a-zA-Z-/]*$
     ConstraintDescription: ArtifactPrefix key prefix can include numbers, lowercase letters, uppercase letters, periods (.) hyphens (-), and forward slash (/).
-
+  LambdaZipRevisionSuffix:
+    Description: Suffix added to lambda function code zipfile name to ensure code change is registered
+    Type: String
 Resources:
   CognitoUserPool:
     Type: AWS::CloudFormation::Stack
@@ -35,6 +37,9 @@ Resources:
       TemplateURL: !Sub https://s3.amazonaws.com/${ArtifactBucket}/${ArtifactPrefix}/cognito-user-pool.yaml
       Parameters:
         CallbackUrls: !Ref CallbackUrls
+        ArtifactBucket:   !Ref ArtifactBucket
+        ArtifactPrefix:   !Ref ArtifactPrefix
+        LambdaZipRevisionSuffix: !Ref LambdaZipRevisionSuffix
 
   LambdaAtEdge:
     Type: AWS::CloudFormation::Stack
@@ -43,8 +48,10 @@ Resources:
       Parameters:
         UserPoolId:     !GetAtt CognitoUserPool.Outputs.UserPoolId
         UserPoolClientId:     !GetAtt CognitoUserPool.Outputs.UserPoolClientId
-        ArtifactBucket:   !Ref ArtifactBucketUs
+        ArtifactBucketUS:   !Ref ArtifactBucketUs
+        ArtifactBucket:   !Ref ArtifactBucket
         ArtifactPrefix:   !Ref ArtifactPrefix
+        LambdaZipRevisionSuffix: !Ref LambdaZipRevisionSuffix
 
 Outputs:
   CognitoUserPoolId: 

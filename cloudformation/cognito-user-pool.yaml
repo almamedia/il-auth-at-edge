@@ -5,10 +5,26 @@ Description: |
     http://www.apache.org/licenses/LICENSE-2.0 or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and limitations under the License.
 Parameters:
+  ArtifactBucket:
+    Description: S3 bucket with artifact files (Cloudformation templates)
+    Type: String
+    Default: cloudfront-blog-resources
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$
+    ConstraintDescription: ArtifactsBucket S3 bucket name can include numbers, lowercase letters, uppercase letters, periods (.) and hyphens (-). It cannot start or end with a hyphen (-).
+  ArtifactPrefix:
+    Description: Path in the S3 bucket containing artifact files
+    Type: String
+    Default: authorization-lambda-at-edge/
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: ArtifactPrefix key prefix can include numbers, lowercase letters, uppercase letters, periods (.) hyphens (-), and forward slash (/).
   CallbackUrls:
     Description: comma-separated list of URLs that are valid callback URLS for cognito signin and signout operations, ie. where to return user after sign in or out. You can update this list later, just put something here.
     Type: String
+  LambdaZipRevisionSuffix:
+    Description: Suffix added to lambda function code zipfile name to ensure code change is registered
+    Type: String
 Resources:
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -18,9 +34,9 @@ Resources:
         - Effect: Allow
           Principal:
             Service:
-            - lambda.amazonaws.com
+                - lambda.amazonaws.com
           Action:
-          - sts:AssumeRole
+              - sts:AssumeRole
       Path: "/"
       Policies:
       - PolicyName: root
@@ -29,17 +45,26 @@ Resources:
           Statement:
           - Effect: Allow
             Action:
-            - logs:*
+                - logs:*
             Resource: arn:aws:logs:*:*:*
           - Effect: Allow
             Action:
-            - cognito-idp:CreateUserPool
-            - cognito-idp:CreateUserPoolClient
-            - cognito-idp:CreateUserPoolDomain
+                - cognito-idp:List*
+                - cognito-idp:Get*
+                - cognito-idp:Describe*
+                - cognito-idp:CreateUserPool
+                - cognito-idp:CreateUserPoolClient
+                - cognito-idp:CreateUserPoolDomain
+                - cognito-idp:UpdateUserPool
+                - cognito-idp:UpdateUserPoolClient
+                - cognito-idp:UpdateUserPoolDomain
+                - cognito-idp:DeleteUserPool
+                - cognito-idp:DeleteUserPoolClient
+                - cognito-idp:DeleteUserPoolDomain
             Resource: 
-            - '*'
+                - '*'
 
-  CreateUserPoolAndClientFunction: 
+  UserPoolAndClientResourceLambda: 
     Type: AWS::Lambda::Function
     Properties: 
       Handler: index.handler
@@ -47,74 +72,19 @@ Resources:
       Runtime: python3.6
       Timeout: 60
       Code: 
-        ZipFile: |
-          import boto3
-          import cfnresponse
-          def handler(event, context):
-              responseData = {}
-              print (str(event)) 
-              try: 
-                  if event['RequestType'] == 'Create':
-                      client = boto3.client('cognito-idp') 
-                      response = client.create_user_pool(
-                          AdminCreateUserConfig={
-                              'AllowAdminCreateUserOnly': True,
-                              'UnusedAccountValidityDays': 7
-                          },
-                          PoolName='il-auth-at-edge-userpool',
-                          AutoVerifiedAttributes=['email'],
-                          Schema=[
-                              {
-                                  'Name': 'email',
-                                  'Required': True
-                              }
-                          ]
-                      )
-                      CreatedUserPoolId = response['UserPool']['Id']
-                      response = client.create_user_pool_client(
-                          UserPoolId=CreatedUserPoolId,
-                          ClientName='il-auth-at-edge-userpool-client',
-                          ReadAttributes=[
-                              'address', 'birthdate', 'email', 'email_verified', 'family_name', 'gender', 'given_name', 'locale', 'middle_name', 'name', 'nickname', 'phone_number', 'phone_number_verified', 'picture', 'preferred_username', 'profile', 'updated_at', 'website', 'zoneinfo'
-                          ],
-                          WriteAttributes=[
-                              'address', 'birthdate', 'email', 'family_name', 'gender', 'given_name', 'locale', 'middle_name', 'name', 'nickname', 'phone_number', 'picture', 'preferred_username', 'profile', 'updated_at', 'website', 'zoneinfo'
-                          ],
-                          SupportedIdentityProviders=['COGNITO'],
-                          CallbackURLs=event['ResourceProperties']['CallbackUrls'].split(','),
-                          LogoutURLs=event['ResourceProperties']['CallbackUrls'].split(','),
-                          AllowedOAuthFlows=['implicit','code'],
-                          AllowedOAuthScopes=['aws.cognito.signin.user.admin','openid'],
-                          AllowedOAuthFlowsUserPoolClient=True
-                      )
-                      CreatedClientId = response['UserPoolClient']['ClientId']
-                      response = client.create_user_pool_domain(
-                          Domain = str(CreatedClientId),
-                          UserPoolId = CreatedUserPoolId
-                      )
-                      responseData['UserPoolId'] = CreatedUserPoolId
-                      responseData['ClientId'] = CreatedClientId
-                      print("SUCCESS, ResponseData=" + str(responseData))
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-                  else:
-                      print("SUCCESS - operation not Create, ResponseData=" + str(responseData))
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-              except Exception as e:
-                  responseData['Error'] = str(e)
-                  cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID") 
-                  print("FAILED ERROR: " + responseData['Error'])
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Sub ${ArtifactPrefix}/userpool-${LambdaZipRevisionSuffix}.zip
 
-  CreateUserPoolAndClient:
+  UserPoolAndClient:
     Type: Custom::CreateUserPoolAndClient
-    DeletionPolicy: Retain
     Properties:
-      ServiceToken: !GetAtt CreateUserPoolAndClientFunction.Arn
+      ServiceToken: !GetAtt UserPoolAndClientResourceLambda.Arn
       CallbackUrls: !Ref CallbackUrls
 
 Outputs:
   UserPoolId:
     Description: generated ID for this UserPool
-    Value: !GetAtt CreateUserPoolAndClient.UserPoolId
+    Value: !GetAtt UserPoolAndClient.UserPoolId
   UserPoolClientId:
     Description: generated ID for this UserPoolClient
-    Value: !GetAtt CreateUserPoolAndClient.ClientId
+    Value: !GetAtt UserPoolAndClient.ClientId

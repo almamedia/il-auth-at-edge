@@ -13,7 +13,12 @@ Parameters:
     Type: String
   ArtifactBucket:
     Type: String
+  ArtifactBucketUS:
+    Type: String
   ArtifactPrefix:
+    Type: String
+  LambdaZipRevisionSuffix:
+    Description: Suffix added to lambda function code zipfile name to ensure code change is registered
     Type: String
 
 Resources:
@@ -45,96 +50,32 @@ Resources:
             Action:
             - s3:*
             Resource: 
-            - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
-            - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}/*'
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}'
 
   UpdateConfigFunction: 
     Type: AWS::Lambda::Function
     Properties: 
+      FunctionName: il-auth-at-edge-UpdateConfig
       Handler: index.handler
       Role: !GetAtt UpdateConfigExecutionRole.Arn
       Runtime: python3.6
       Timeout: 60
       MemorySize: 1536
       Code: 
-        ZipFile: |
-          import cfnresponse
-          import os
-          import boto3
-          import json
-          from io import BytesIO
-          from urllib.request import urlopen
-          import zipfile
-          from pathlib import Path
-          def handler(event, context):
-            print (str(event))
-            responseData = {}
-            try: 
-              if (event['RequestType'] == 'Create') or (event['RequestType'] == 'Update'):
-                  ArtifactBucket = event['ResourceProperties']['ArtifactBucket']
-                  ArtifactPrefix = event['ResourceProperties']['ArtifactPrefix']
-                  UserPoolId = event['ResourceProperties']['UserPoolId']
-                  UserPoolClientId = event['ResourceProperties']['UserPoolClientId']
-                  AWSRegion = event['ResourceProperties']['AWSRegion']
-                  print("get jwks value")
-                  jwksUrl = 'https://cognito-idp.' + AWSRegion + '.amazonaws.com/' + UserPoolId + '/.well-known/jwks.json'
-                  with urlopen(jwksUrl) as httpresponse:
-                      jwks = str( httpresponse.read() )
-                  jwks = jwks.replace('b\'{', '{')
-                  jwks = jwks.replace('}\'', '}')
-                  print("unzip source Zip to local directory")
-                  baseDir = '/tmp/' + ArtifactBucket + '/' + ArtifactPrefix + "/"
-                  localZipName = '/tmp/edge-auth.zip'
-                  remoteZipName = ArtifactPrefix + '/edge-auth.zip'
-                  print("baseDir=" + baseDir)
-                  s3 = boto3.resource('s3')
-                  s3.meta.client.download_file(ArtifactBucket, remoteZipName, localZipName)
-                  with zipfile.ZipFile(localZipName) as zfile:
-                    zfile.extractall(baseDir)
-                  print("read index.js")
-                  indexjs = Path(baseDir + 'index.js').read_text()
-                  indexjs = indexjs.replace('##JWKS##', jwks)
-                  indexjs = indexjs.replace('##USERPOOLID##', UserPoolId)
-                  indexjs = indexjs.replace('##CLIENTID##', UserPoolClientId)
-                  indexjs = indexjs.replace('##REGION##', AWSRegion)
-                  print("save index.js back to disk")
-                  with open(baseDir + 'index.js',"w") as w:
-                      w.write(indexjs)
-                  print("zip up the directory")
-                  zipHandle = zipfile.ZipFile(localZipName, 'w', compression = zipfile.ZIP_DEFLATED)
-                  addDirToZip(zipHandle, baseDir, baseDir)
-                  zipHandle.close()
-                  print("upload to S3")
-                  s3.meta.client.upload_file('/tmp/edge-auth.zip', ArtifactBucket, remoteZipName, ExtraArgs={'ACL': 'public-read'} )
-                  responseData['Status'] = 'SUCCESS'
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-                  print ('SUCCESS')
-              else:
-                  print("SUCCESS - operation not Create or Update, ResponseData=" + str(responseData))
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-            except Exception as e:
-              responseData['Error'] = str(e)
-              cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID") 
-              print("FAILED ERROR: " + responseData['Error'])
-          def addDirToZip(zipHandle, path, basePath=""):
-              basePath = basePath.rstrip("\\/") + ""
-              basePath = basePath.rstrip("\\/")
-              for root, dirs, files in os.walk(path):
-                  zipHandle.write(os.path.join(root, "."))
-                  for file in files:
-                      filePath = os.path.join(root, file)
-                      inZipPath = filePath.replace(basePath, "", 1).lstrip("\\/")
-                      zipHandle.write(filePath, inZipPath)
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Sub ${ArtifactPrefix}/updateconfig-${LambdaZipRevisionSuffix}.zip
 
-  UpdateConfigCustom:
-    Type: Custom::UpdateConfigCustom
+  UpdateConfig:
+    Type: Custom::UpdateConfig
     DeletionPolicy: Retain
     Properties:
       ServiceToken: !GetAtt UpdateConfigFunction.Arn
-      ArtifactBucket: !Ref ArtifactBucket
+      ArtifactBucket: !Ref ArtifactBucketUS
       ArtifactPrefix: !Ref ArtifactPrefix
       AWSRegion: !Ref "AWS::Region"
       UserPoolId: !Ref UserPoolId
+      ZipFile: !Sub edge-auth-${LambdaZipRevisionSuffix}.zip
       UserPoolClientId: !Ref UserPoolClientId
 
   CreateLambdaExecutionRole:
@@ -163,65 +104,32 @@ Resources:
             Resource: arn:aws:logs:*:*:*
           - Effect: Allow
             Action:
-              - lambda:CreateFunction
-            Resource: arn:aws:lambda:*:*:*
+              - lambda:*
+            Resource: 
+              - !Sub arn:aws:lambda:us-east-1:${AWS::AccountId}:*
           - Effect: Allow
             Action:
               - iam:PassRole
             Resource: '*'
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource: 
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}/*'
+            - !Sub 'arn:aws:s3:::${ArtifactBucketUS}'
 
-  CreateLambdaCustomFunction: 
+  CreateLambdaFunction: 
     Type: AWS::Lambda::Function
     Properties: 
+      FunctionName: il-auth-at-edge-CreateLambda
       Handler: index.handler
       Role: !GetAtt CreateLambdaExecutionRole.Arn
       Runtime: python3.6
       Timeout: 60
       MemorySize: 1536
       Code: 
-        ZipFile: |
-          import cfnresponse
-          import os
-          import boto3
-          def handler(event, context):
-            print (str(event))
-            responseData = {}
-            try: 
-              if (event['RequestType'] == 'Create') or (event['RequestType'] == 'Update'):
-                S3Bucket = event['ResourceProperties']['Code']['S3Bucket']
-                S3Key = event['ResourceProperties']['Code']['S3Key']
-                FunctionName = event['ResourceProperties']['FunctionName']
-                Runtime = event['ResourceProperties']['Runtime']
-                Timeout = int(event['ResourceProperties']['Timeout'])
-                MemorySize = int(event['ResourceProperties']['MemorySize'])
-                Handler = event['ResourceProperties']['Handler']
-                Role = event['ResourceProperties']['Role']
-                AWSRegion = event['ResourceProperties']['AWSRegion']
-                client = boto3.client('lambda', region_name=AWSRegion)
-                response = client.create_function(
-                  Publish=True,
-                  FunctionName=FunctionName,
-                  Code={
-                    'S3Bucket':S3Bucket,
-                    'S3Key':S3Key
-                  },
-                  Timeout=Timeout,
-                  MemorySize=MemorySize,
-                  Runtime=Runtime,
-                  Role=Role,
-                  Handler=Handler,
-                )
-                responseData['Arn']=response['FunctionArn']
-                responseData['Version']=response['Version']
-                print("SUCCESS, ResponseData=" + str(responseData))
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-              else:
-                print("SUCCESS - operation not Create, ResponseData=" + str(responseData))
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
-            except Exception as e:
-              responseData['Error'] = str(e)
-              cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID") 
-              print("FAILED ERROR: " + responseData['Error'])
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Sub ${ArtifactPrefix}/createlambda-${LambdaZipRevisionSuffix}.zip
 
   EdgeAuthExecutionRole:
     Type: AWS::IAM::Role
@@ -252,35 +160,35 @@ Resources:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:*
+            Resource: !Sub arn:aws:logs:*:${AWS::AccountId}:*
 
-  EdgeAuthFunction: 
+  EdgeAuth: 
     Type: Custom::CreateLambdaFunctionOnSpecifiedRegion
-    DependsOn: UpdateConfigCustom
+    DependsOn: UpdateConfig
     DeletionPolicy: Retain
     Properties:
-      ServiceToken: !GetAtt CreateLambdaCustomFunction.Arn
+      ServiceToken: !GetAtt CreateLambdaFunction.Arn
       Handler: index.handler
-      FunctionName: !Sub IlAuthAtEdgeLambda-${AWS::StackName}
+      FunctionName: !Sub il-auth-at-edge-EdgeAuth
       Runtime: nodejs8.10
       Timeout: 1
       MemorySize: 128
       Role: !GetAtt EdgeAuthExecutionRole.Arn
       Code:
-        S3Bucket: !Ref ArtifactBucket 
-        S3Key: !Sub ${ArtifactPrefix}/edge-auth.zip
+        S3Bucket: !Ref ArtifactBucketUS
+        S3Key: !Sub ${ArtifactPrefix}/edge-auth-${LambdaZipRevisionSuffix}.zip
       AWSRegion: us-east-1
 
 Outputs:
   EdgeAuthFunction: 
     Description: Reference to the Lambda function
-    Value: !GetAtt EdgeAuthFunction.Arn
+    Value: !GetAtt EdgeAuth.Arn
   EdgeAuthFunctionInitialVersion: 
     Description: Reference to the Lambda function published version
     Value: !Join
       - ':'
-      - - !GetAtt EdgeAuthFunction.Arn
-        - !GetAtt EdgeAuthFunction.Version
+      - - !GetAtt EdgeAuth.Arn
+        - !GetAtt EdgeAuth.Version
 
 
 

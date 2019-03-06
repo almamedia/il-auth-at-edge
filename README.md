@@ -18,9 +18,11 @@ Authorization with Lambda@Edge and JSON Web Tokens (JWTs). Modified from example
 
 Istallation creates set of Cloudformation stacks in specified account and region plus some in us-east-1 (N. Virginia).
 
+You should have Python3.6 and pip3 installed.
+
 You should have aws cli installed and profiles set up in your ~/.aws/credentials file.
 
-Artifacts (lambda auth function and Cloudformation templates and signin redirect page) are stored in s3 buckets. Buckets are created if they don't exist.
+Artifacts (lambda function zipfiles, Cloudformation templates and signin redirect page) are stored in s3 buckets. Buckets are created if they don't exist.
 
 Run
 ```

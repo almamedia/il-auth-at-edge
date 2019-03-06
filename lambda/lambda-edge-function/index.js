@@ -105,7 +105,7 @@ exports.handler = (event, context, callback) => {
             for (i = 0; i < cookieHeaders.length; i++) {
                 var parsedCookies = parseCookieHeader(cookieHeaders[i].value);
                 if (parsedCookies["IlAuthAtEdge"]) {
-                    jwtToken = cookie["IlAuthAtEdge"]
+                    jwtToken = parsedCookies["IlAuthAtEdge"]
                     break;
                 }
             }
